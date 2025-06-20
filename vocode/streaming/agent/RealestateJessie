@@ -1,0 +1,70 @@
+import os
+from vocode.streaming.agent.chat_gpt_agent import ChatGPTAgent
+from vocode.streaming.models.agent import ChatGPTAgentConfig
+from vocode.streaming.models.transcript import Transcript
+from vocode.streaming.models.message import BaseMessage
+from vocode.streaming.models.synthesizer import ElevenLabsSynthesizerConfig
+from vocode.streaming.models.audio_encoding import AudioEncoding
+from vocode.streaming.telephony.transcriber.twilio_transcriber import TwilioTranscriberConfig
+from vocode.streaming.telephony.synthesizer.twilio_synthesizer import TwilioSynthesizerConfig
+from vocode.streaming.telephony.server.base import TwilioInboundCallConfig, TelephonyServer
+
+# Set your environment variables or paste keys directly (not recommended for production)
+os.environ["OPENAI_API_KEY"] = "your-openai-key-here"
+os.environ["ELEVENLABS_API_KEY"] = "your-elevenlabs-key-here"
+os.environ["TWILIO_ACCOUNT_SID"] = "your-twilio-sid"
+os.environ["TWILIO_AUTH_TOKEN"] = "your-twilio-auth-token"
+
+# 👇 Customize your assistant's prompt and voice tone here
+real_estate_prompt = """
+You are a friendly, upbeat female voice assistant for a real estate company.
+You answer questions from real estate agents, prospective buyers, and buyers under contract.
+Be clear, casual, and professional.
+If you are unsure or the question is too specific, say: 'Let me grab someone from the team to help you out!'
+
+FAQs you know:
+Q: How do I schedule a showing?
+A: Use ShowingTime or contact the listing agent directly.
+
+Q: When is closing?
+A: Typically 30 to 45 days after the offer is accepted.
+
+Q: Who handles inspections?
+A: Usually the buyer's agent or inspector. I can help connect you if needed.
+"""
+
+# 👇 Define the GPT agent
+agent = ChatGPTAgent(
+    agent_config=ChatGPTAgentConfig(
+        prompt_preamble=real_estate_prompt,
+        model_name="gpt-3.5-turbo",
+        temperature=0.5,
+        max_tokens=500,
+        openai_api_key=os.environ["OPENAI_API_KEY"],
+    )
+)
+
+# 👇 Define the synthesizer using ElevenLabs (change voice_id as needed)
+synthesizer_config = ElevenLabsSynthesizerConfig(
+    voice_id="Rachel",  # You can choose a different ElevenLabs voice
+    api_key=os.environ["ELEVENLABS_API_KEY"],
+)
+
+# 👇 Twilio call configuration
+call_config = TwilioInboundCallConfig(
+    twilio_account_sid=os.environ["TWILIO_ACCOUNT_SID"],
+    twilio_auth_token=os.environ["TWILIO_AUTH_TOKEN"],
+    twilio_phone_number="+1234567890",  # Replace with your Twilio number
+)
+
+# 👇 Create the server to listen for calls
+server = TelephonyServer(
+    agent=agent,
+    synthesizer_config=synthesizer_config,
+    inbound_call_config=call_config,
+)
+
+# 👇 Start the server
+if __name__ == "__main__":
+    print("Real estate AI assistant is running...")
+    server.run()
